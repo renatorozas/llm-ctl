@@ -4,7 +4,7 @@ set -e
 REPO_URL="https://raw.githubusercontent.com/renatorozas/llm-ctl/main"
 INSTALL_DIR="$HOME/.llm-ctl"
 SCRIPT_PATH="$INSTALL_DIR/llm-ctl.sh"
-MODELS_DIR="${LLM_MODELS_ROOT:-$HOME/models}"
+MODELS_DIR="${LLMCTL_MODELS_ROOT:-$HOME/models}"
 
 main() {
   echo ""

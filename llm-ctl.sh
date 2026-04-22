@@ -15,8 +15,8 @@
 #
 # Requirements:
 #   - bash 4+ OR zsh 5+
-#   - llama-server (from llama.cpp) — see LLM_SERVER_DIR
-#   - GGUF models in LLM_MODELS_ROOT (default: ~/models)
+#   - llama-server (from llama.cpp) — see LLMCTL_SERVER_DIR
+#   - GGUF models in LLMCTL_MODELS_ROOT (default: ~/models)
 #   - claude (Claude Code CLI)
 #   - curl, stat, find
 #
@@ -24,8 +24,8 @@
 # Use zsh (the default since Catalina) or install a newer bash:
 #   brew install bash
 #
-# Models are auto-discovered from LLM_MODELS_ROOT. To add a new model,
-# just download the GGUF files into any subdirectory of LLM_MODELS_ROOT.
+# Models are auto-discovered from LLMCTL_MODELS_ROOT. To add a new model,
+# just download the GGUF files into any subdirectory of LLMCTL_MODELS_ROOT.
 # They'll appear in llm-ctl list and llm-ctl set automatically.
 #
 # Usage:
@@ -63,18 +63,18 @@ fi
 # ── Configuration ────────────────────────────────────────────────────────────
 # All of these can be overridden via environment variables before sourcing.
 
-LLM_PORT="${LLM_PORT:-8080}"
-LLM_SERVER_DIR="${LLM_SERVER_DIR:-$HOME/llama.cpp}"
-LLM_MODELS_ROOT="${LLM_MODELS_ROOT:-$HOME/models}"
-LLM_CONFIG="${LLM_CONFIG:-$HOME/.local-llm-config}"
-LLM_PIDFILE="${LLM_PIDFILE:-/tmp/llm-server.pid}"
-LLM_MODELFILE="${LLM_MODELFILE:-/tmp/llm-server.model}"
-LLM_LOCKFILE="${LLM_LOCKFILE:-/tmp/llm-server.lock}"
-LLM_LOGFILE="${LLM_LOGFILE:-/tmp/llm-server.log}"
+LLMCTL_PORT="${LLMCTL_PORT:-8080}"
+LLMCTL_SERVER_DIR="${LLMCTL_SERVER_DIR:-$HOME/llama.cpp}"
+LLMCTL_MODELS_ROOT="${LLMCTL_MODELS_ROOT:-$HOME/models}"
+LLMCTL_CONFIG="${LLMCTL_CONFIG:-$HOME/.local-llm-config}"
+LLMCTL_PIDFILE="${LLMCTL_PIDFILE:-/tmp/llm-server.pid}"
+LLMCTL_MODELFILE="${LLMCTL_MODELFILE:-/tmp/llm-server.model}"
+LLMCTL_LOCKFILE="${LLMCTL_LOCKFILE:-/tmp/llm-server.lock}"
+LLMCTL_LOGFILE="${LLMCTL_LOGFILE:-/tmp/llm-server.log}"
 
-LLM_DEFAULT_CTX="${LLM_DEFAULT_CTX:-65536}"
-LLM_DEFAULT_TEMP_PLANNER="${LLM_DEFAULT_TEMP_PLANNER:-0.7}"
-LLM_DEFAULT_TEMP_CODER="${LLM_DEFAULT_TEMP_CODER:-0.2}"
+LLMCTL_DEFAULT_CTX="${LLMCTL_DEFAULT_CTX:-65536}"
+LLMCTL_DEFAULT_TEMP_PLANNER="${LLMCTL_DEFAULT_TEMP_PLANNER:-0.7}"
+LLMCTL_DEFAULT_TEMP_CODER="${LLMCTL_DEFAULT_TEMP_CODER:-0.2}"
 
 # Context-size options shown in the interactive picker
 _LLM_CTX_OPTIONS="16384 32768 65536 131072 262144"
@@ -127,48 +127,48 @@ _llm_stat_size() {
 # Keys: role.field  (e.g. planner.model, coder.ctx)
 
 if [ "$_LLM_SHELL" = "zsh" ]; then
-  typeset -gA LLM_CFG
+  typeset -gA _LLMCTL_CFG
 else
-  declare -gA LLM_CFG
+  declare -gA _LLMCTL_CFG
 fi
-LLM_CFG=()
+_LLMCTL_CFG=()
 
 _llm_load_config() {
-  LLM_CFG=()
-  [ -f "$LLM_CONFIG" ] || return 0
+  _LLMCTL_CFG=()
+  [ -f "$LLMCTL_CONFIG" ] || return 0
   local key value
   while IFS='=' read -r key value; do
     if [ -n "$key" ] && [ -n "$value" ]; then
-      LLM_CFG[$key]="$value"
+      _LLMCTL_CFG[$key]="$value"
     fi
-  done < "$LLM_CONFIG"
+  done < "$LLMCTL_CONFIG"
 }
 
 _llm_save_config() {
-  : > "$LLM_CONFIG"
+  : > "$LLMCTL_CONFIG"
   local key
   if [ "$_LLM_SHELL" = "zsh" ]; then
-    for key in "${(@k)LLM_CFG}"; do
-      echo "$key=${LLM_CFG[$key]}" >> "$LLM_CONFIG"
+    for key in "${(@k)_LLMCTL_CFG}"; do
+      echo "$key=${_LLMCTL_CFG[$key]}" >> "$LLMCTL_CONFIG"
     done
   else
-    for key in "${!LLM_CFG[@]}"; do
-      echo "$key=${LLM_CFG[$key]}" >> "$LLM_CONFIG"
+    for key in "${!_LLMCTL_CFG[@]}"; do
+      echo "$key=${_LLMCTL_CFG[$key]}" >> "$LLMCTL_CONFIG"
     done
   fi
 }
 
-_llm_get() { echo "${LLM_CFG[$1.$2]:-}"; }
-_llm_set_field() { LLM_CFG[$1.$2]="$3"; }
-_llm_unset_field() { unset "LLM_CFG[$1.$2]"; }
+_llm_get() { echo "${_LLMCTL_CFG[$1.$2]:-}"; }
+_llm_set_field() { _LLMCTL_CFG[$1.$2]="$3"; }
+_llm_unset_field() { unset "_LLMCTL_CFG[$1.$2]"; }
 
 _llm_load_config
 
 # ── Model discovery ──────────────────────────────────────────────────────────
 
 _llm_list_models() {
-  [ -d "$LLM_MODELS_ROOT" ] || return 0
-  find "$LLM_MODELS_ROOT" -type f -name "*.gguf" 2>/dev/null | \
+  [ -d "$LLMCTL_MODELS_ROOT" ] || return 0
+  find "$LLMCTL_MODELS_ROOT" -type f -name "*.gguf" 2>/dev/null | \
     awk '
       {
         if ($0 ~ /-[0-9]{5}-of-[0-9]{5}\.gguf$/) {
@@ -182,7 +182,7 @@ _llm_list_models() {
 
 _llm_friendly_name() {
   local path="$1"
-  local rel="${path#$LLM_MODELS_ROOT/}"
+  local rel="${path#$LLMCTL_MODELS_ROOT/}"
   local dir="${rel%/*}"
 
   case "$dir" in
@@ -248,12 +248,12 @@ _llm_model_exists() { [ -f "$1" ]; }
 # ── Server helpers ───────────────────────────────────────────────────────────
 
 _llm_server_running() {
-  [ -f "$LLM_PIDFILE" ] && kill -0 "$(cat "$LLM_PIDFILE")" 2>/dev/null
+  [ -f "$LLMCTL_PIDFILE" ] && kill -0 "$(cat "$LLMCTL_PIDFILE")" 2>/dev/null
 }
 
 _llm_current_model() {
-  if [ -f "$LLM_MODELFILE" ]; then
-    cat "$LLM_MODELFILE"
+  if [ -f "$LLMCTL_MODELFILE" ]; then
+    cat "$LLMCTL_MODELFILE"
   else
     echo ""
   fi
@@ -261,7 +261,7 @@ _llm_current_model() {
 
 _llm_active_sessions() {
   local count=0
-  if [ -f "$LLM_LOCKFILE" ]; then
+  if [ -f "$LLMCTL_LOCKFILE" ]; then
     local live_pids="" pid
     while IFS= read -r pid; do
       if kill -0 "$pid" 2>/dev/null; then
@@ -269,18 +269,18 @@ _llm_active_sessions() {
         live_pids="${live_pids}${pid}
 "
       fi
-    done < "$LLM_LOCKFILE"
-    printf '%s' "$live_pids" > "$LLM_LOCKFILE"
+    done < "$LLMCTL_LOCKFILE"
+    printf '%s' "$live_pids" > "$LLMCTL_LOCKFILE"
   fi
   echo "$count"
 }
 
-_llm_register_session() { echo "$$" >> "$LLM_LOCKFILE"; }
+_llm_register_session() { echo "$$" >> "$LLMCTL_LOCKFILE"; }
 
 _llm_unregister_session() {
-  if [ -f "$LLM_LOCKFILE" ]; then
-    grep -v "^$$\$" "$LLM_LOCKFILE" > "${LLM_LOCKFILE}.tmp" 2>/dev/null || true
-    mv "${LLM_LOCKFILE}.tmp" "$LLM_LOCKFILE" 2>/dev/null || true
+  if [ -f "$LLMCTL_LOCKFILE" ]; then
+    grep -v "^$$\$" "$LLMCTL_LOCKFILE" > "${LLMCTL_LOCKFILE}.tmp" 2>/dev/null || true
+    mv "${LLMCTL_LOCKFILE}.tmp" "$LLMCTL_LOCKFILE" 2>/dev/null || true
   fi
 }
 
@@ -288,13 +288,13 @@ _llm_wait_for_server() {
   local max_wait=300
   local waited=0
   printf "  Waiting for server to be ready"
-  while ! curl -s "http://localhost:$LLM_PORT/health" >/dev/null 2>&1; do
+  while ! curl -s "http://localhost:$LLMCTL_PORT/health" >/dev/null 2>&1; do
     sleep 2
     waited=$((waited + 2))
     printf "."
     if [ "$waited" -ge "$max_wait" ]; then
       echo " timeout!"
-      echo "  Check logs: $LLM_LOGFILE"
+      echo "  Check logs: $LLMCTL_LOGFILE"
       return 1
     fi
   done
@@ -310,22 +310,22 @@ _llm_start_server() {
   echo "  Model: $(_llm_friendly_name "$model_path")"
   echo "  Context: $ctx  Temp: $temp"
 
-  if [ ! -x "$LLM_SERVER_DIR/llama-server" ]; then
-    echo "  ✗ llama-server not found at $LLM_SERVER_DIR/llama-server"
-    echo "  Set LLM_SERVER_DIR or build llama.cpp first."
+  if [ ! -x "$LLMCTL_SERVER_DIR/llama-server" ]; then
+    echo "  ✗ llama-server not found at $LLMCTL_SERVER_DIR/llama-server"
+    echo "  Set LLMCTL_SERVER_DIR or build llama.cpp first."
     return 1
   fi
 
-  nohup "$LLM_SERVER_DIR/llama-server" \
+  nohup "$LLMCTL_SERVER_DIR/llama-server" \
     -m "$model_path" \
     --ctx-size "$ctx" \
     --temp "$temp" --top-p 0.8 --top-k 20 --min-p 0.00 \
-    --port "$LLM_PORT" \
+    --port "$LLMCTL_PORT" \
     --host 127.0.0.1 \
-    > "$LLM_LOGFILE" 2>&1 &
+    > "$LLMCTL_LOGFILE" 2>&1 &
 
-  echo $! > "$LLM_PIDFILE"
-  echo "$model_path" > "$LLM_MODELFILE"
+  echo $! > "$LLMCTL_PIDFILE"
+  echo "$model_path" > "$LLMCTL_MODELFILE"
 
   _llm_wait_for_server
 }
@@ -333,7 +333,7 @@ _llm_start_server() {
 _llm_stop_server() {
   if _llm_server_running; then
     local pid
-    pid=$(cat "$LLM_PIDFILE")
+    pid=$(cat "$LLMCTL_PIDFILE")
     echo "  Stopping server (PID $pid)..."
     kill "$pid" 2>/dev/null
     local waited=0
@@ -342,7 +342,7 @@ _llm_stop_server() {
       waited=$((waited + 1))
     done
     kill -9 "$pid" 2>/dev/null
-    rm -f "$LLM_PIDFILE" "$LLM_MODELFILE"
+    rm -f "$LLMCTL_PIDFILE" "$LLMCTL_MODELFILE"
     echo "  ✓ Server stopped"
   fi
 }
@@ -357,7 +357,7 @@ _llm_prompt_model() {
   models_raw=$(_llm_list_models)
 
   if [ -z "$models_raw" ]; then
-    echo "  ✗ No GGUF models found in $LLM_MODELS_ROOT" >&2
+    echo "  ✗ No GGUF models found in $LLMCTL_MODELS_ROOT" >&2
     echo "  Download models into that directory first." >&2
     return 1
   fi
@@ -405,7 +405,7 @@ _llm_prompt_model() {
 
 _llm_prompt_ctx() {
   local current="$1"
-  local default="${current:-$LLM_DEFAULT_CTX}"
+  local default="${current:-$LLMCTL_DEFAULT_CTX}"
 
   _llm_split "$_LLM_CTX_OPTIONS"
   local options_count="${#_LLM_ARR[@]}"
@@ -464,9 +464,9 @@ _llm_prompt_temp() {
   if [ -n "$current" ]; then
     default="$current"
   elif [ "$role" = "coder" ]; then
-    default="$LLM_DEFAULT_TEMP_CODER"
+    default="$LLMCTL_DEFAULT_TEMP_CODER"
   else
-    default="$LLM_DEFAULT_TEMP_PLANNER"
+    default="$LLMCTL_DEFAULT_TEMP_PLANNER"
   fi
 
   printf "\n  Temperature [default: %s]: " "$default" >&2
@@ -495,7 +495,7 @@ _llm_prompt_temp() {
 
 _llm_cmd_list() {
   echo ""
-  echo "  Models in $LLM_MODELS_ROOT:"
+  echo "  Models in $LLMCTL_MODELS_ROOT:"
   echo ""
 
   local models_raw
@@ -653,7 +653,7 @@ _llm_launch_claude() {
   _llm_register_session
   trap '_llm_unregister_session' EXIT INT TERM
 
-  ANTHROPIC_BASE_URL="http://localhost:$LLM_PORT" \
+  ANTHROPIC_BASE_URL="http://localhost:$LLMCTL_PORT" \
   ANTHROPIC_AUTH_TOKEN="local" \
   ANTHROPIC_API_KEY="" \
   claude "$@"
@@ -671,12 +671,12 @@ _llm_cmd_status() {
     local current sessions pid mem
     current=$(_llm_current_model)
     sessions=$(_llm_active_sessions)
-    pid=$(cat "$LLM_PIDFILE")
+    pid=$(cat "$LLMCTL_PIDFILE")
     echo "  Server:   running (PID $pid)"
     echo "  Model:    $(_llm_friendly_name "$current")"
-    echo "  Port:     $LLM_PORT"
+    echo "  Port:     $LLMCTL_PORT"
     echo "  Sessions: $sessions active"
-    echo "  Logs:     $LLM_LOGFILE"
+    echo "  Logs:     $LLMCTL_LOGFILE"
     mem=$(ps -o rss= -p "$pid" 2>/dev/null | tr -d ' ')
     [ -n "$mem" ] && echo "  Memory:   $(( mem / 1024 )) MB"
   else
@@ -700,10 +700,10 @@ _llm_cmd_stop() {
     esac
   fi
   _llm_stop_server
-  rm -f "$LLM_LOCKFILE"
+  rm -f "$LLMCTL_LOCKFILE"
 }
 
-_llm_cmd_logs() { tail -f "$LLM_LOGFILE"; }
+_llm_cmd_logs() { tail -f "$LLMCTL_LOGFILE"; }
 
 _llm_cmd_download() {
   if ! command -v hf >/dev/null 2>&1; then
@@ -746,7 +746,7 @@ _llm_cmd_download() {
   shift
 
   local repo_name="${repo##*/}"
-  local dest="$LLM_MODELS_ROOT/$repo_name"
+  local dest="$LLMCTL_MODELS_ROOT/$repo_name"
 
   echo ""
   echo "  Downloading from: $repo"

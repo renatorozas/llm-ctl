@@ -11,7 +11,7 @@ Assign models to roles (planner for architecture/reasoning, coder for execution)
 - **llama-server** from [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **claude** ([Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI)
 - **hf** CLI (for `llm-ctl download`) — `pip install -U 'huggingface_hub[cli]'`
-- GGUF model files in `~/models` (or set `LLM_MODELS_ROOT`)
+- GGUF model files in `~/models` (or set `LLMCTL_MODELS_ROOT`)
 
 ## Install
 
@@ -61,10 +61,10 @@ exec $SHELL
 
    Or manually place GGUF files in `~/models` (subdirectories work too).
 
-   To use a different models path, set `LLM_MODELS_ROOT` before sourcing:
+   To use a different models path, set `LLMCTL_MODELS_ROOT` before sourcing:
 
    ```sh
-   export LLM_MODELS_ROOT="/path/to/your/models"
+   export LLMCTL_MODELS_ROOT="/path/to/your/models"
    ```
 
 2. Configure a role:
@@ -96,7 +96,7 @@ llm-ctl logs                  # Tail server logs
 
 ## How It Works
 
-- Models are auto-discovered from `LLM_MODELS_ROOT` (default: `~/models`)
+- Models are auto-discovered from `LLMCTL_MODELS_ROOT` (default: `~/models`)
 - Only one llama-server runs at a time; models swap automatically when needed
 - Active Claude Code sessions are tracked to prevent unsafe model swaps
 - Configuration persists across shell restarts to `~/.local-llm-config`
@@ -107,12 +107,12 @@ All settings have sensible defaults. Override via environment variables before s
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PORT` | `8080` | llama-server port |
-| `LLM_SERVER_DIR` | `~/llama.cpp` | Path to llama.cpp build |
-| `LLM_MODELS_ROOT` | `~/models` | Where to find GGUF files |
-| `LLM_DEFAULT_CTX` | `65536` | Default context size |
-| `LLM_DEFAULT_TEMP_PLANNER` | `0.7` | Default planner temperature |
-| `LLM_DEFAULT_TEMP_CODER` | `0.2` | Default coder temperature |
+| `LLMCTL_PORT` | `8080` | llama-server port |
+| `LLMCTL_SERVER_DIR` | `~/llama.cpp` | Path to llama.cpp build |
+| `LLMCTL_MODELS_ROOT` | `~/models` | Where to find GGUF files |
+| `LLMCTL_DEFAULT_CTX` | `65536` | Default context size |
+| `LLMCTL_DEFAULT_TEMP_PLANNER` | `0.7` | Default planner temperature |
+| `LLMCTL_DEFAULT_TEMP_CODER` | `0.2` | Default coder temperature |
 
 ## License
 
