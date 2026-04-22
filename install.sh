@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/renatoargh/llm-ctl/main"
+REPO_URL="https://raw.githubusercontent.com/renatorozas/llm-ctl/main"
 INSTALL_DIR="$HOME/.llm-ctl"
 SCRIPT_PATH="$INSTALL_DIR/llm-ctl.sh"
 MODELS_DIR="${LLM_MODELS_ROOT:-$HOME/models}"
@@ -22,7 +22,7 @@ main() {
   curl -fsSL "$REPO_URL/llm-ctl.sh" -o "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
 
-  SOURCE_LINE="source $SCRIPT_PATH"
+  SOURCE_LINE="source \"$SCRIPT_PATH\""
   RC_FILE=""
 
   case "$(basename "${SHELL:-}")" in
@@ -39,7 +39,8 @@ main() {
   fi
 
   if [ -n "$RC_FILE" ]; then
-    if ! grep -qF "$SOURCE_LINE" "$RC_FILE" 2>/dev/null; then
+    touch "$RC_FILE"
+    if ! grep -qF "$SOURCE_LINE" "$RC_FILE"; then
       echo "" >> "$RC_FILE"
       echo "$SOURCE_LINE" >> "$RC_FILE"
       echo "  Added to $RC_FILE:"

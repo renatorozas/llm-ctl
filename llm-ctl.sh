@@ -5,7 +5,7 @@
 # Works with both zsh and bash 4+ on macOS, Linux, and WSL.
 #
 # Install:
-#   curl -fsSL https://raw.githubusercontent.com/renatoargh/llm-ctl/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/renatorozas/llm-ctl/main/install.sh | sh
 #
 # Manual setup:
 #   1. Place this file somewhere (e.g. ~/.llm-ctl/llm-ctl.sh)
@@ -731,16 +731,18 @@ _llm_cmd_download() {
   fi
 
   local repo="$1"
-  if [ -z "$repo" ]; then
-    echo ""
-    echo "  Usage: llm-ctl download <repo> [hf-options]"
-    echo ""
-    echo "  Examples:"
-    echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF"
-    echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.Q4_K_M.gguf'"
-    echo ""
-    return 1
-  fi
+  case "${repo:-}" in
+    ""|--*|-*)
+      echo ""
+      echo "  Usage: llm-ctl download <owner/model> [hf-options]"
+      echo ""
+      echo "  Examples:"
+      echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF"
+      echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.Q4_K_M.gguf'"
+      echo ""
+      return 1
+      ;;
+  esac
   shift
 
   local repo_name="${repo##*/}"
@@ -778,7 +780,7 @@ _llm_cmd_help() {
   echo "    active                Show current role configurations"
   echo "    set <role>            Configure a role (planner|coder)"
   echo "    unset <role>          Clear a role's configuration"
-  echo "    download <repo>      Download a model from Hugging Face"
+  echo "    download <repo>       Download a model from Hugging Face"
   echo ""
   echo "  Server:"
   echo "    status                Show running server info"

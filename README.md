@@ -16,7 +16,7 @@ Assign models to roles (planner for architecture/reasoning, coder for execution)
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/renatoargh/llm-ctl/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/renatorozas/llm-ctl/main/install.sh | sh
 ```
 
 Then restart your shell:
@@ -31,7 +31,7 @@ exec $SHELL
 1. Clone or copy `llm-ctl.sh`:
 
    ```sh
-   git clone https://github.com/renatoargh/llm-ctl.git
+   git clone https://github.com/renatorozas/llm-ctl.git
    mkdir -p ~/.llm-ctl
    cp llm-ctl/llm-ctl.sh ~/.llm-ctl/llm-ctl.sh
    ```
