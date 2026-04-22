@@ -57,7 +57,14 @@ exec $SHELL
 
    # Download all files from a repo
    llm-ctl download bartowski/Llama-3.2-1B-Instruct-GGUF
+
+   # Download only model files (skip configs, readmes, etc.)
+   llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.gguf'
    ```
+
+   All arguments after the repo name are forwarded to `hf download` — run
+   `hf download --help` for the full list. Do not pass `--local-dir`; it is
+   set automatically to `$LLMCTL_MODELS_ROOT/<repo-name>/`.
 
    Or manually place GGUF files in `~/models` (subdirectories work too).
 
