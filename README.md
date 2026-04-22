@@ -8,12 +8,51 @@ Assign models to roles (planner for architecture/reasoning, coder for execution)
 
 - **zsh 5+** (default on macOS since Catalina) or **bash 4+**
   - macOS system bash is 3.2 — use zsh or `brew install bash`
-- **llama-server** from [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- **llama-server** from [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - **claude** ([Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI)
-- **hf** CLI (for `llm-ctl download`) — `pip install -U 'huggingface_hub[cli]'`
-- GGUF model files in `~/models` (or set `LLMCTL_MODELS_ROOT`)
+- **hf** CLI *(optional — for `llm-ctl download`)*
+
+## Dependencies
+
+If you already have these, skip to [Install](#install).
+
+**llama.cpp** — build from source:
+
+```sh
+git clone https://github.com/ggml-org/llama.cpp && cd llama.cpp
+cmake -B build && cmake --build build --config Release -j
+```
+
+Point `LLMCTL_SERVER_DIR` at the directory containing `llama-server` (add to your shell rc):
+
+```sh
+export LLMCTL_SERVER_DIR="$HOME/llama.cpp/build/bin"
+```
+
+See the [llama.cpp build guide](https://github.com/ggml-org/llama.cpp#build) for GPU acceleration and platform-specific options. On macOS, Homebrew is an alternative:
+
+```sh
+brew install llama.cpp
+export LLMCTL_SERVER_DIR="$(dirname "$(which llama-server)")"
+```
+
+**Claude Code**:
+
+```sh
+npm install -g @anthropic-ai/claude-code
+```
+
+See the [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code) for setup and authentication.
+
+**hf CLI** *(optional — only needed for `llm-ctl download`)*:
+
+```sh
+pip install -U "huggingface_hub[cli]"
+```
 
 ## Install
+
+Once dependencies are in place, install llm-ctl:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/renatorozas/llm-ctl/main/install.sh | sh
@@ -47,38 +86,27 @@ exec $SHELL
 
 </details>
 
-## Setup
+## Quick Start
 
 1. Download a model:
 
    ```sh
-   # Download a specific quantization
    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.Q4_K_M.gguf'
-
-   # Download all files from a repo
-   llm-ctl download bartowski/Llama-3.2-1B-Instruct-GGUF
-
-   # Download only model files (skip configs, readmes, etc.)
-   llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.gguf'
    ```
 
-   All arguments after the repo name are forwarded to `hf download` — run
-   `hf download --help` for the full list. Do not pass `--local-dir`; it is
-   set automatically to `$LLMCTL_MODELS_ROOT/<repo-name>/`.
-
-   Or manually place GGUF files in `~/models` (subdirectories work too).
-
-   To use a different models path, set `LLMCTL_MODELS_ROOT` before sourcing:
-
-   ```sh
-   export LLMCTL_MODELS_ROOT="/path/to/your/models"
-   ```
+   Or place GGUF files manually in `~/models` (see `LLMCTL_MODELS_ROOT` in [Configuration](#configuration) to change the path).
 
 2. Configure a role:
 
    ```sh
    llm-ctl set planner    # interactive: pick model, context size, temperature
    llm-ctl set coder
+   ```
+
+3. Launch:
+
+   ```sh
+   llm-ctl planner
    ```
 
 ## Usage
@@ -115,7 +143,7 @@ All settings have sensible defaults. Override via environment variables before s
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LLMCTL_PORT` | `8080` | llama-server port |
-| `LLMCTL_SERVER_DIR` | `~/llama.cpp` | Path to llama.cpp build |
+| `LLMCTL_SERVER_DIR` | `~/llama.cpp` | Path to directory containing `llama-server` |
 | `LLMCTL_MODELS_ROOT` | `~/models` | Where to find GGUF files |
 | `LLMCTL_DEFAULT_CTX` | `65536` | Default context size |
 | `LLMCTL_DEFAULT_TEMP_PLANNER` | `0.7` | Default planner temperature |
