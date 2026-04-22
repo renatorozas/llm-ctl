@@ -10,68 +10,88 @@ Assign models to roles (planner for architecture/reasoning, coder for execution)
   - macOS system bash is 3.2 — use zsh or `brew install bash`
 - **llama-server** from [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **claude** ([Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI)
+- **hf** CLI (for `llm-ctl download`) — `pip install -U 'huggingface_hub[cli]'`
 - GGUF model files in `~/models` (or set `LLM_MODELS_ROOT`)
 
-## Setup
+## Install
 
-1. Clone or copy `llm-ctl.sh` somewhere:
+```sh
+curl -fsSL https://raw.githubusercontent.com/renatoargh/llm-ctl/main/install.sh | sh
+```
+
+Then restart your shell:
+
+```sh
+exec $SHELL
+```
+
+<details>
+<summary>Manual install</summary>
+
+1. Clone or copy `llm-ctl.sh`:
 
    ```sh
-   git clone <repo-url>
-   # or just copy the script
-   cp llm-ctl.sh ~/llm-ctl.sh
+   git clone https://github.com/renatoargh/llm-ctl.git
+   mkdir -p ~/.llm-ctl
+   cp llm-ctl/llm-ctl.sh ~/.llm-ctl/llm-ctl.sh
    ```
 
 2. Source it from your shell rc file:
 
    ```sh
    # ~/.zshrc or ~/.bashrc
-   source ~/llm-ctl.sh
+   source ~/.llm-ctl/llm-ctl.sh
    ```
 
-3. Create a models directory and add your GGUF files:
+3. Reload your shell: `exec $SHELL`
+
+</details>
+
+## Setup
+
+1. Download a model:
 
    ```sh
-   mkdir -p ~/models
-   # Download or copy your .gguf files into ~/models (subdirectories work too)
+   # Download a specific quantization
+   llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.Q4_K_M.gguf'
+
+   # Download all files from a repo
+   llm-ctl download bartowski/Llama-3.2-1B-Instruct-GGUF
    ```
 
-   To use a different path, set `LLM_MODELS_ROOT` before sourcing:
+   Or manually place GGUF files in `~/models` (subdirectories work too).
+
+   To use a different models path, set `LLM_MODELS_ROOT` before sourcing:
 
    ```sh
    export LLM_MODELS_ROOT="/path/to/your/models"
    ```
 
-4. Reload your shell:
+2. Configure a role:
 
    ```sh
-   exec $SHELL
-   ```
-
-5. Configure a role:
-
-   ```sh
-   llm-set planner    # interactive: pick model, context size, temperature
-   llm-set coder
+   llm-ctl set planner    # interactive: pick model, context size, temperature
+   llm-ctl set coder
    ```
 
 ## Usage
 
 ```sh
 # Launch Claude Code with a local model
-claude-planner              # Use the planner model
-claude-coder                # Use the coder model
+llm-ctl planner              # Use the planner model
+llm-ctl coder                # Use the coder model
 
 # Manage models
-llm-list                    # List discovered GGUF models
-llm-active                  # Show current role configurations
-llm-set <role>              # Configure a role (planner or coder)
-llm-unset <role>            # Clear a role's configuration
+llm-ctl list                  # List discovered GGUF models
+llm-ctl active                # Show current role configurations
+llm-ctl set <role>            # Configure a role (planner or coder)
+llm-ctl unset <role>          # Clear a role's configuration
+llm-ctl download <repo>      # Download a model from Hugging Face
 
 # Server management
-llm-status                  # Show running server info
-llm-stop                    # Stop the llama-server
-llm-logs                    # Tail server logs
+llm-ctl status                # Show running server info
+llm-ctl stop                  # Stop the llama-server
+llm-ctl logs                  # Tail server logs
 ```
 
 ## How It Works

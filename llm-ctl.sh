@@ -4,13 +4,13 @@
 # =============================================================================
 # Works with both zsh and bash 4+ on macOS, Linux, and WSL.
 #
-# Setup:
-#   1. Place this file somewhere (e.g. ~/llm-ctl.sh)
+# Install:
+#   curl -fsSL https://raw.githubusercontent.com/renatoargh/llm-ctl/main/install.sh | sh
+#
+# Manual setup:
+#   1. Place this file somewhere (e.g. ~/.llm-ctl/llm-ctl.sh)
 #   2. Source it from your shell rc file:
-#        # For zsh  — add to ~/.zshrc:
-#        source ~/llm-ctl.sh
-#        # For bash — add to ~/.bashrc:
-#        source ~/llm-ctl.sh
+#        source ~/.llm-ctl/llm-ctl.sh
 #   3. Reload your shell: exec $SHELL
 #
 # Requirements:
@@ -26,20 +26,22 @@
 #
 # Models are auto-discovered from LLM_MODELS_ROOT. To add a new model,
 # just download the GGUF files into any subdirectory of LLM_MODELS_ROOT.
-# They'll appear in llm-list and llm-set automatically.
+# They'll appear in llm-ctl list and llm-ctl set automatically.
 #
 # Usage:
-#   claude-planner              → Launch Claude Code with active planner
-#   claude-coder                → Launch Claude Code with active coder
+#   llm-ctl planner             → Launch Claude Code with active planner
+#   llm-ctl coder               → Launch Claude Code with active coder
 #
-#   llm-set <role>              → Interactively configure a role
-#                                   role: planner | coder
-#   llm-list                    → List discovered GGUF models
-#   llm-active                  → Show current selections per role
-#   llm-unset <role>            → Clear active selection
-#   llm-status                  → Show running server info
-#   llm-stop                    → Stop the server
-#   llm-logs                    → Tail server logs
+#   llm-ctl set <role>           → Interactively configure a role
+#                                    role: planner | coder
+#   llm-ctl list                 → List discovered GGUF models
+#   llm-ctl active               → Show current selections per role
+#   llm-ctl unset <role>         → Clear active selection
+#   llm-ctl download <repo>     → Download a model from Hugging Face
+#   llm-ctl status               → Show running server info
+#   llm-ctl stop                 → Stop the server
+#   llm-ctl logs                 → Tail server logs
+#   llm-ctl help                 → Show available commands
 # =============================================================================
 
 # ── Shell detection ──────────────────────────────────────────────────────────
@@ -491,7 +493,7 @@ _llm_prompt_temp() {
 
 # ── Public commands ──────────────────────────────────────────────────────────
 
-llm-list() {
+_llm_cmd_list() {
   echo ""
   echo "  Models in $LLM_MODELS_ROOT:"
   echo ""
@@ -522,7 +524,7 @@ llm-list() {
   echo ""
 }
 
-llm-active() {
+_llm_cmd_active() {
   echo ""
   local role model ctx temp status name
   for role in planner coder; do
@@ -538,17 +540,17 @@ llm-active() {
       echo "    ctx:    $ctx"
       echo "    temp:   $temp"
     else
-      echo "  $role: (not set — run 'llm-set $role')"
+      echo "  $role: (not set — run 'llm-ctl set $role')"
     fi
     echo ""
   done
 }
 
-llm-set() {
+_llm_cmd_set() {
   local role="$1"
 
   if [ "$role" != "planner" ] && [ "$role" != "coder" ]; then
-    echo "  Usage: llm-set <planner|coder>"
+    echo "  Usage: llm-ctl set <planner|coder>"
     return 1
   fi
 
@@ -579,10 +581,10 @@ llm-set() {
   echo ""
 }
 
-llm-unset() {
+_llm_cmd_unset() {
   local role="$1"
   if [ "$role" != "planner" ] && [ "$role" != "coder" ]; then
-    echo "  Usage: llm-unset <planner|coder>"
+    echo "  Usage: llm-ctl unset <planner|coder>"
     return 1
   fi
   _llm_unset_field "$role" model
@@ -602,14 +604,14 @@ _llm_launch_claude() {
   if [ -z "$model" ]; then
     echo ""
     echo "  ✗ No $role model configured."
-    echo "  Run: llm-set $role"
+    echo "  Run: llm-ctl set $role"
     echo ""
     return 1
   fi
 
   if ! _llm_model_exists "$model"; then
     echo "  ✗ Model file missing: $model"
-    echo "  Run: llm-set $role"
+    echo "  Run: llm-ctl set $role"
     return 1
   fi
 
@@ -635,7 +637,7 @@ _llm_launch_claude() {
     if [ "$sessions" -gt 0 ]; then
       echo ""
       echo "  ✗ Cannot swap: current model has $sessions active session(s)."
-      echo "  Exit those sessions first, or run 'llm-stop' to force."
+      echo "  Exit those sessions first, or run 'llm-ctl stop' to force."
       echo ""
       return 1
     fi
@@ -660,10 +662,10 @@ _llm_launch_claude() {
   trap - EXIT INT TERM
 }
 
-claude-planner() { _llm_launch_claude planner "$@"; }
-claude-coder()   { _llm_launch_claude coder "$@"; }
+_llm_cmd_planner() { _llm_launch_claude planner "$@"; }
+_llm_cmd_coder()   { _llm_launch_claude coder "$@"; }
 
-llm-status() {
+_llm_cmd_status() {
   echo ""
   if _llm_server_running; then
     local current sessions pid mem
@@ -683,7 +685,7 @@ llm-status() {
   echo ""
 }
 
-llm-stop() {
+_llm_cmd_stop() {
   local sessions
   sessions=$(_llm_active_sessions)
   if [ "$sessions" -gt 0 ]; then
@@ -701,4 +703,123 @@ llm-stop() {
   rm -f "$LLM_LOCKFILE"
 }
 
-llm-logs() { tail -f "$LLM_LOGFILE"; }
+_llm_cmd_logs() { tail -f "$LLM_LOGFILE"; }
+
+_llm_cmd_download() {
+  if ! command -v hf >/dev/null 2>&1; then
+    echo ""
+    echo "  The 'hf' CLI (Hugging Face Hub) is required for downloads."
+    echo ""
+    if command -v brew >/dev/null 2>&1; then
+      echo "  Install it with:"
+      echo "    brew install huggingface-cli"
+    elif command -v pipx >/dev/null 2>&1; then
+      echo "  Install it with:"
+      echo "    pipx install huggingface_hub"
+    elif command -v pip3 >/dev/null 2>&1; then
+      echo "  Install it with:"
+      echo "    pip3 install -U 'huggingface_hub[cli]'"
+    elif command -v pip >/dev/null 2>&1; then
+      echo "  Install it with:"
+      echo "    pip install -U 'huggingface_hub[cli]'"
+    else
+      echo "  Python is required. Install Python first, then run:"
+      echo "    pip install -U 'huggingface_hub[cli]'"
+    fi
+    echo ""
+    return 1
+  fi
+
+  local repo="$1"
+  if [ -z "$repo" ]; then
+    echo ""
+    echo "  Usage: llm-ctl download <repo> [hf-options]"
+    echo ""
+    echo "  Examples:"
+    echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF"
+    echo "    llm-ctl download bartowski/Qwen2.5-Coder-32B-Instruct-GGUF --include '*.Q4_K_M.gguf'"
+    echo ""
+    return 1
+  fi
+  shift
+
+  local repo_name="${repo##*/}"
+  local dest="$LLM_MODELS_ROOT/$repo_name"
+
+  echo ""
+  echo "  Downloading from: $repo"
+  echo "  Destination:      $dest"
+  echo ""
+
+  hf download "$repo" --local-dir "$dest" "$@"
+  local rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    echo ""
+    echo "  ✓ Download complete: $dest"
+    echo "  Run 'llm-ctl list' to see available models."
+    echo ""
+  else
+    echo ""
+    echo "  ✗ Download failed (exit code $rc)" >&2
+    echo ""
+    return "$rc"
+  fi
+}
+
+_llm_cmd_help() {
+  echo ""
+  echo "  llm-ctl — Local LLM Manager"
+  echo ""
+  echo "  Usage: llm-ctl <command> [args]"
+  echo ""
+  echo "  Model management:"
+  echo "    list                  List discovered GGUF models"
+  echo "    active                Show current role configurations"
+  echo "    set <role>            Configure a role (planner|coder)"
+  echo "    unset <role>          Clear a role's configuration"
+  echo "    download <repo>      Download a model from Hugging Face"
+  echo ""
+  echo "  Server:"
+  echo "    status                Show running server info"
+  echo "    stop                  Stop the llama-server"
+  echo "    logs                  Tail server logs"
+  echo ""
+  echo "  Launch:"
+  echo "    planner [args]        Launch Claude Code with planner model"
+  echo "    coder [args]          Launch Claude Code with coder model"
+  echo ""
+  echo "  help                    Show this help"
+  echo ""
+}
+
+llm-ctl() {
+  local cmd="${1:-help}"
+  [ $# -gt 0 ] && shift
+  case "$cmd" in
+    list)     _llm_cmd_list "$@" ;;
+    active)   _llm_cmd_active "$@" ;;
+    set)      _llm_cmd_set "$@" ;;
+    unset)    _llm_cmd_unset "$@" ;;
+    status)   _llm_cmd_status "$@" ;;
+    stop)     _llm_cmd_stop "$@" ;;
+    logs)     _llm_cmd_logs "$@" ;;
+    planner)  _llm_cmd_planner "$@" ;;
+    coder)    _llm_cmd_coder "$@" ;;
+    download) _llm_cmd_download "$@" ;;
+    help|-h|--help) _llm_cmd_help ;;
+    *)
+      echo "  llm-ctl: unknown command '$cmd'" >&2
+      echo "  Run 'llm-ctl help' for usage." >&2
+      return 1
+      ;;
+  esac
+}
+
+# ── Tab completion ───────────────────────────────────────────────────────────
+
+if [ "$_LLM_SHELL" = "zsh" ]; then
+  compctl -k "(list set unset active status stop logs download planner coder help)" llm-ctl
+else
+  complete -W "list set unset active status stop logs download planner coder help" llm-ctl
+fi
