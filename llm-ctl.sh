@@ -181,8 +181,8 @@ _llm_list_models() {
 }
 
 _llm_friendly_name() {
-  local path="$1"
-  local rel="${path#$LLMCTL_MODELS_ROOT/}"
+  local filepath="$1"
+  local rel="${filepath#$LLMCTL_MODELS_ROOT/}"
   local dir="${rel%/*}"
 
   case "$dir" in
@@ -190,7 +190,7 @@ _llm_friendly_name() {
       echo "$dir"
       ;;
     *)
-      local base="${path##*/}"
+      local base="${filepath##*/}"
       base="${base%.gguf}"
       case "$base" in
         *-00001-of-[0-9][0-9][0-9][0-9][0-9])
@@ -207,16 +207,16 @@ _llm_friendly_name() {
 }
 
 _llm_file_size() {
-  local path="$1"
+  local filepath="$1"
 
-  case "$path" in
+  case "$filepath" in
     *-00001-of-[0-9][0-9][0-9][0-9][0-9].gguf)
       # Split model — extract shard count and sum all shards
-      local fname="${path##*/}"
+      local fname="${filepath##*/}"
       local suffix="${fname%.gguf}"
       local total_shards="${suffix##*-of-}"
       local shards_int=$((10#$total_shards))
-      local base="${path%-00001-of-*}"
+      local base="${filepath%-00001-of-*}"
       local total=0
       local i padded shard s
       for ((i = 1; i <= shards_int; i++)); do
@@ -231,7 +231,7 @@ _llm_file_size() {
       ;;
     *)
       local size
-      size=$(_llm_stat_size "$path")
+      size=$(_llm_stat_size "$filepath")
       if [ -n "$size" ] && [ "$size" -gt 0 ] 2>/dev/null; then
         if [ "$size" -gt 1073741824 ]; then
           echo "$(( size / 1024 / 1024 / 1024 )) GB"
